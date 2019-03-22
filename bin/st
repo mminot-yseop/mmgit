@@ -1,0 +1,157 @@
+#! /usr/bin/env bash
+
+######################################################################
+# “git status” wrapper.
+######################################################################
+
+
+W="$(tput setaf 7)"
+B="$(tput bold)"
+N="$(tput sgr0)"
+
+unset -v valid unval untra added unvrm rmved renmd confl other
+
+valid=()
+unval=()
+untra=()
+added=()
+unvrm=()
+rmved=()
+renmd=()
+confl=()
+# Should not be useful, but I don't want to miss stuff.
+other=()
+
+unset -v headers
+declare -A headers
+headers[added]='Validated additions'
+headers[confl]='Conflicts'
+headers[other]='Others (?)'
+headers[renmd]='Renamed and probably modified, or copied or whatever'
+headers[rmved]='Validated deletions'
+headers[untra]='Untracked'
+headers[unval]='Unvalidated'
+headers[unvrm]='Unvalidated deletions'
+headers[valid]='Validated'
+
+
+# $1    String.
+function print_header {
+    echo "  ${B}${1}:${N}"
+}
+
+
+# $1    Filename that must be inspected.
+function get_label {
+    local b
+    
+    b="$(basename "$1")"
+    
+    # Note that I sometimes have to take into account that git adds
+    # double quotes around the names (when they contain spaces).
+    
+    if grep -qm 1 '^\.' <<< "$b"
+    then
+        # Hidden file.
+        echo '[hid]'
+    elif grep -qm 1 '\.prefs"\?$' <<< "$b"
+    then
+        # Preferences.
+        echo '[pre]'
+    elif grep -qm 1 '\.launch"\?$' <<< "$b"
+    then
+        # Launch configs.
+        echo '[lau]'
+    elif grep -qm 1 '/\.settings/' <<< "$1"
+    then
+        # Settings.
+        echo '[set]'
+    elif [ "$b" = 'MANIFEST.MF' ] || [ "$b" = 'MANIFEST.MF"' ]
+    then
+        # Manifest.
+        echo '[man]'
+    elif [ "$b" = 'pom.xml' ]
+    then
+        # POM.
+        echo '[pom]'
+    elif grep -qm 1 '/"\?$' <<< "$1"
+    then
+        # Directory.
+        echo 'dir→ '
+    else
+        echo '   → '
+    fi
+}
+
+
+function display_files {
+    for file in "$@"
+    do
+        lbl="$(get_label "$file")"
+        echo "${W}${lbl}${N} ${file}"
+    done | sort -V
+}
+
+
+# $1    Category such as unval, untra, confl…
+function results_for_category {
+    if [ "$(
+            eval echo '"${#'"$1"'[@]}"'
+        )" -gt 0 ]
+    then
+        print_header "${headers[$1]}"
+        eval display_files '"${'"$1"'[@]}"'
+        echo
+    fi
+}
+
+
+unset -v ignline newname
+
+while IFS='' read -rd '' line
+do
+    if [ "$ignline" ]
+    then
+        unset -v ignline
+        continue
+    fi
+    
+    if [ "$newname" ]
+    then
+        renmd+=("$line")
+        unset -v newname
+        continue
+    fi
+    
+    # The status is described in the first two characters.
+    info="${line:0:2}"
+    # Then, there's a space and the file's name.
+    file="${line:3}"
+    
+    case "$info" in
+        'M ')       valid+=("$file");;
+        ' M')       unval+=("$file");;
+        '??')       untra+=("$file");;
+        'A '|'AM')  added+=("$file");;
+        'D '|'DU')  rmved+=("$file");;
+        ' D')       unvrm+=("$file");;
+        'UU'|'AA')  confl+=("$file");;
+        'R '|'C ')
+                    renmd+=("$file")
+                    # There was a renaming operation; the next line
+                    # will be the new name and must be ignored.
+                    ignline=1
+                    ;;
+        'RM')
+                    # Renamed. Use the next line.
+                    newname=1
+                    ;;
+        *)          other+=("$file");;
+    esac
+done < <(git status -z --porcelain)
+
+echo
+for category in "${!headers[@]}"
+do
+    results_for_category "$category"
+done
