@@ -1,0 +1,153 @@
+#! /usr/bin/env bash
+
+######################################################################
+# Used to revert some files to the state they were in
+# at the last commit.
+######################################################################
+
+
+function print_help {
+    local name_for_doc
+    
+    name_for_doc=$(printf '%q' "$(basename "$0")")
+    
+    cat << _HELP_
+
+  Revert some files to the state they were in at the last commit.
+
+  Usage:
+
+    ${name_for_doc} [-n]
+
+  A dialogue box will be opened using Zenity. The user will be able to
+  tick boxes for each file that he wants to revert.
+
+  Note that files that did not exist at the time of the latest commit
+  will be deleted.
+
+  The “-n” (“no”) option can be used to change the default value
+  from “ticked” (“will be reverted”) to “unticked” (“will not be reverted”).
+
+_HELP_
+}
+
+
+# Revert tracked files (status not “??”).
+# The “files” indexed array must be filled.
+function revert_tracked_files {
+    git status -z "${files[@]}" \
+            | sed -zn '/^??/! s/^...// p' \
+            | xargs -0 --no-run-if-empty git checkout HEAD --
+}
+
+
+# Remove untracked selected files (status “??”).
+# The “files” indexed array must be filled.
+function remove_untracked_files {
+    git status -z "${files[@]}" \
+            | sed -zn '/^??/ s/^...// p' \
+            | xargs -0 --no-run-if-empty rm -r
+}
+
+###############################
+
+if ! type zenity &> /dev/null
+then
+    printf '%s: Error: Please install zenity.\n' "$(basename "$0")" >&2
+    exit 2
+fi
+
+default_value='true'
+OPTIND=1
+while getopts 'hn' opt
+do
+    case "$opt" in
+        h)
+            print_help
+            exit 0
+            ;;
+        n)
+            default_value=''
+            ;;
+        *)
+            exit 1
+            ;;
+    esac
+done
+shift $((OPTIND - 1))
+
+
+unset -v files
+files=()
+
+# Let's get every file that was changed somehow.
+while IFS='' read -rd '' line
+do
+    if [ "$ignline" ]
+    then
+        unset -v ignline
+        continue
+    fi
+    
+    # The status is described in the first two characters.
+    info="${line:0:2}"
+    # Then, there's a space and the file's name.
+    file="${line:3}"
+    
+    if [ "$info" = 'RM' ] || [ "$info" = 'R ' ]
+    then
+        # There was a renaming operation; the next line
+        # will be the new name and must be ignored.
+        ignline=1
+    fi
+    
+    files+=( "$file" )
+done < <(git status -z --porcelain)
+
+if [ ${#files[@]} -eq 0 ]
+then
+    echo 'Nothing to revert.'
+    exit 0
+fi
+
+# Now it's time to build the dialogue box.
+unset -v cmd
+cmd=(
+    zenity --list --checklist --column ''  --column 'File'
+)
+cmd+=(--width 1100 --height 750)
+
+for file in "${files[@]}"
+do
+    cmd+=("$default_value" "$file")
+done
+
+files=()
+
+# Zenity outputs a list like “foo|bar|plop”.
+# We add a final separator and then loop on the names.
+while read -rd '|' file
+do
+    files+=( "$file" )
+done < <(
+    # Add missing separator at the end so that “read” is happy.
+    "${cmd[@]}" 2> /dev/null | sed 's/[^|]$/&|/'
+)
+
+if [ "${#files[@]}" -eq 0 ]
+then
+    echo 'No file selected.'
+    exit 0
+fi
+
+# Go to root to help Git finding files.
+cd "$(git rev-parse --show-toplevel)" || exit
+
+if revert_tracked_files && remove_untracked_files
+then
+    echo 'Checkout / rm OK.'
+    exit 0
+else
+    echo 'Checkout / rm failed.'
+    exit 1
+fi

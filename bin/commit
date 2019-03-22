@@ -1,0 +1,378 @@
+#! /usr/bin/env bash
+
+######################################################################
+# “git commit” wrapper with basic help to follow this:
+# https://www.conventionalcommits.org/en/v1.0.0-beta.3/
+#
+# $1    Extension of files to add. Case insensitive.
+#       If empty, do not add anything before committing.
+#       If “all”, add every changed file.
+#
+# -h or --help for help.
+######################################################################
+
+
+# ===== Configuration and constants
+
+# Maximal header length for a commit message.
+declare -ir MAX_LENGTH=72
+
+# Editor used when adding a body to a commit message.
+# Using an array to allow additional parameters.
+# Make sure the command you set launches a new instance
+# in the foreground and waits for the user to close it, or you won't be
+# able to edit the file before the scripts resumes its execution.
+unset -v EDITOR
+#declare -r EDITOR=(nano)
+#declare -r EDITOR=(mousepad)
+declare -r EDITOR=(geany -i)
+
+
+# Used for some “select” statements.
+unset -v AUTO_OR_EDIT_MENU
+declare -r AUTO_OR_EDIT_MENU=(
+    'Use that suggestion. ↑'
+    'Manually edit what you typed.'
+)
+
+# The valid commit types.
+unset -v
+declare -r COMMIT_TYPES=(
+    build
+    chore
+    ci
+    docs
+    feat
+    fix
+    perf
+    refactor
+    revert
+    style
+    test
+)
+
+
+# ===== Help
+
+if [ "$1" = '-h' ] || [ "$1" = '--help' ]
+then
+    name_for_doc=$(printf '%q' "$(basename "$0")")
+    cat << _HELP_
+
+  “git commit” helper.
+
+  Usage:
+
+    ${name_for_doc} [EXTENSION...]
+
+  Files that were edited and have an extension matching the ones given
+  as optional arguments will be added via “git add”.
+  Then, the user will be prompt for information to build a commit message.
+
+  For example, “${name_for_doc} java py” will perform a “git add”
+  on “*.java” and “*.py” files that were changed.
+
+  The special value “all” (“${name_for_doc} all”) will add all modified files.
+
+  If no extension is given, the script will directly skip to the commit
+  phase. This is useful if you already manually added the changes you
+  want to commit.
+
+  The commit can be cancelled at any time by killing the script via Ctrl-C.
+
+_HELP_
+    exit 0
+fi
+
+
+# ===== Dependencies
+
+if ! type st &> /dev/null
+then
+    printf '%s: Error: Command “st” not found. This is another custom Git script. It is helpful here.\n' \
+            "$(basename "$0")" >&2
+    exit 1
+fi
+
+if ! type "${EDITOR[0]}" &> /dev/null
+then
+    printf '%s: Error: Command “%q” set in EDITOR not found. Check the corresponding constant in the script.\n' \
+            "${EDITOR[0]}" "$(basename "$0")" >&2
+    exit 1
+fi
+
+
+# ===== Functions
+
+# Issue the required “git add” commands.
+#
+# $1    The Git project's root.
+# $2..k The arguments to the main script. There should be at least one
+#       there; avoid calling this function if $# = 0.
+function perform_adds {
+    local filetype
+    
+    # Let's go to root to help “add” to work properly.
+    pushd "${1:?No path given.}" > /dev/null || exit
+    for filetype in "${@:1}"
+    do
+        git status -z \
+                | sed -z 's/^...//' \
+                | grep -iz "$(compute_pattern "$filetype")" \
+                | xargs -0 --no-run-if-empty git add
+    done
+    popd > /dev/null || exit
+}
+
+
+# Set the “type” variable with a chosen valid commit type.
+function choose_commit_type {
+    local -r OLD_PROMPT=$PS3
+    
+    PS3=$'\nEnter a number to choose a commit type: '
+    select type in "${COMMIT_TYPES[@]}"
+    do
+        if [ "$type" ]
+        then
+            break
+        fi
+    done || exit
+
+    printf 'Type: %s\n' "$type"
+    
+    # Note that in the case of PS3 (like for IFS, I think),
+    # unset ≠ empty
+    if [ "$OLD_PROMPT" ]
+    then
+        PS3=$OLD_PROMPT
+    else
+        unset -v PS3
+    fi
+}
+
+
+# Set the “scope” variable.
+# Might be empty, since a commit can be left without a scope.
+function enter_scope {
+    local previous_value
+    local sanitized_scope
+    local answer
+
+    echo
+    echo 'It is advised to give a scope, but this can be left empty.'
+
+    while :
+        read -rep 'Scope: ' -i "$previous_value" scope
+
+        sanitized_scope=$(sanitize_scope <<< "$scope")
+        if [ "$sanitized_scope" != "$scope" ]
+        then
+            echo
+            printf 'This should be written as “%s”.\n' "$sanitized_scope"
+            select answer in "${AUTO_OR_EDIT_MENU[@]}"
+            do
+                if [ "$answer" ]
+                then
+                    break
+                fi
+                # Refuse by default in case of Ctrl-D.
+            done || REPLY=2
+            
+            if [ "$REPLY" -eq 1 ]
+            then
+                scope=$sanitized_scope
+                # Stop looping.
+                false
+            else
+                # Need to loop back.
+                previous_value=$scope
+                true
+            fi
+        else
+            # Stop looping.
+            false
+        fi
+    do
+        :
+    done
+}
+
+
+# Used to get the “foo bar” part in “type(scope): foo bar”.
+#
+# $1    Prompt. For better looks, use the entered type and scope
+#       in a “type(scope):” style.
+# $2    Remaining available space for the header (integer).
+#
+# This function sets the “message” variable.
+# This function also does its best to make sure it is not blank.
+function enter_rest_of_the_header {
+    local previous_value
+    local sanitized_msg
+    local answer
+
+    echo
+    echo 'You must now enter the header of the commit message.'
+
+    while :
+        echo 'You can write until you reach the “╮” (included).'
+        echo
+        # “───────────────…”
+        yes | head -n "$((MAX_LENGTH - 1))" | xargs printf '%.0s─'
+        echo '╮'
+        
+        read -rep "$1" -i "$previous_value" message
+        
+        if [ -z "$(tr -d '[:blank:]' <<< "$message")" ]
+        then
+            echo 'Please enter a non-blank message.'
+            # Loop back!
+            true
+        else
+            sanitized_msg=$(sanitize_msg "$2" <<< "$message")
+            if [ "$sanitized_msg" != "$message" ]
+            then
+                echo
+                printf 'This should be written as “%s”.\n' "$sanitized_msg"
+                select answer in "${AUTO_OR_EDIT_MENU[@]}"
+                do
+                    if [ "$answer" ]
+                    then
+                        break
+                    fi
+                    # Refuse by default in case of Ctrl-D.
+                done || REPLY=2
+                
+                if [ "$REPLY" -eq 1 ]
+                then
+                    message=$sanitized_msg
+                    # Stop looping.
+                    false
+                else
+                    # Need to loop back.
+                    previous_value=$message
+                    true
+                fi
+            else
+                # Stop looping.
+                false
+            fi
+        fi
+    do
+        :
+    done
+}
+
+
+# Let the user enter a body if he wishes to do so.
+# If a body is typed, it as added to the “message” variable.
+function enter_body {
+    local answer
+    local tempfile
+    local body
+    
+    echo
+    echo 'You can add a body to the message if detailed explanations are required.'
+    read -p 'Add a body? [y/N] ' answer
+    if [ "$answer" = 'y' ] || [ "$answer" = 'Y' ]
+    then
+        # Create a disposable file to type stuff.
+        tempfile=$(mktemp "${TMPDIR:-/tmp}"/commit-XXXXXXXX)
+        echo 'Waiting the the editor to be closed...'
+        # Run the editor.
+        "${EDITOR[@]}" "$tempfile"
+        # Read what the user typed.
+        body=$(cat "$tempfile")
+        # Sure, it's temporary, but let's clean a little bit anyway.
+        rm -- "$tempfile"
+        if [ "$body" ]
+        then
+            # Append that to the message, leaving a blank line.
+            message+=$'\n\n'${body}
+        fi
+    fi
+}
+
+
+# $1    Same as for the script itself, but not empty.
+# stdout →  Pattern for grep to find files with the given extension,
+#           or nothing if “all” was given.
+function compute_pattern {
+    if [ "$1" != all ]
+    then
+        printf '\.%s$' "$1"
+    fi
+}
+
+
+# Filter to obtain valid scopes.
+function sanitize_scope {
+    sed '
+        s/.*/\L&/g
+    ' | tr -d '[:blank:]'
+}
+
+
+# Filter to obtain valid messages.
+# $1    Maximal allowed length for the message.
+function sanitize_msg {
+    : ${1:?No length given.}
+    sed -r '
+        # Uncapitalize the first character.
+        s/^./\L&/
+        # Avoid full stop at the end.
+        s/\.$//
+        # Cut at the maximal length.
+        s/^(.{'"$1"'}).*$/\1/
+    '
+}
+
+
+# ===== “Main” code
+
+project_root=$(git rev-parse --show-toplevel)
+
+if [ -z "$project_root" ] || [ ! -d "$project_root" ]
+then
+    printf '%s: Error: Could not determine the root of the Git project. Check your working directory.\n' \
+            "$(basename "$0")" >&2
+    exit 2
+fi
+
+
+if [ $# -gt 0 ]
+then
+    # Must stage changes for the commit!
+    perform_adds "$project_root" "$@"
+fi
+
+st
+echo 'Commit: “<type>(<scope>): <message>” – Ctrl-C to cancel.'
+echo
+
+choose_commit_type
+
+# Set to something human-friendly.
+PS3=$'\nEnter a number to choose: '
+
+enter_scope
+
+if [ "$scope" ]
+then
+    prompt="${type}(${scope}): "
+else
+    prompt="${type}: "
+fi
+
+# Used to know what length the rest of the header can have.
+declare -i used_space remaining_space
+used_space=${#prompt}
+remaining_space=$((MAX_LENGTH - used_space))
+
+enter_rest_of_the_header "$prompt" "$remaining_space"
+enter_body
+
+echo
+git commit -m "${prompt}${message}"
+echo
+printf '%s: Done.\n' "$(basename "$0")"
