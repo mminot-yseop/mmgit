@@ -1,0 +1,109 @@
+# Git wrappers and tools
+:toc:
+
+A few basic Git tools. Some are tuned to help following “conventional commits” conventions, too.
+
+
+# Getting started
+
+## Scripts
+
+Add the `bin/` directory to your `PATH`. Something like `PATH+=':~/bin/mmgit/bin/'` (adapt the path if need be) in your `.bashrc` or `.zshrc` should suffice. Just make sure the variable is “exported”.
+
+[source,bash]
+```
+# […]
+PATH+=':~/bin/mmgit/bin/'
+# […]
+export PATH
+```
+
+You can write the `export` once or a thousand times, before or after the assignments; it does not matter. And `export foo=bar` is just like `foo=bar` followed by `export foo`.
+
+
+## Aliases and functions
+
+Still in `.bashrc` (or `.zshrc`, etc.), add a line to make sure functions and aliases are loaded:
+
+[source,bash]
+```
+. ~/bin/mmgit/aliases_and_functions.sh
+```
+
+Again, the path might change depending on where you saved `mmgit` on your computer.
+
+Note that this line can be added virtually anywhere in the file. Don't give it too much thinking, as long as you keep things organized. Closer to the end is generally better, though, since the weird default things of your OS might be written at the beginning.
+
+
+# Overview
+
+Here's a list of the available tools.
+
+
+## Scripts
+
+While there is generally no huge difference from the user's point of view between scripts, aliases and functions, it is worth noting that the scripts provided here can show an help message via the ``-h`` option.
+
+`st`::
+    Similar to `git status`. Can be harmlessly run to get an overview of which files have been modified and what will be included in the next commit. This can also be useful to spot conflicting files, etc.
+
+`commit`::
+    Commit changes (“you don't say!”). This can also run preemptive `git add` commands before the commit.
+
+`gcheck`::
+    Place yourself on an existing local branch, or create a new branch that uses a distant branch as a model. Nice to quickly start testing a coworker's branch.
+
+`revert`::
+    Give up uncommitted local changes on some files to put them back into the state they were in at the time of the latest commit.
+
+TIP: These are only short descriptions. Make sure you check the `-h` messages for those scripts.
+
+
+## Aliases and functions
+
+No help messages for those. These are just simple shorthands for common operations.
+
+
+### Functions
+
+`gdel`::
+    Open a dialogue box allowing you to pick local branches that should be deleted. Needs `zenity` to be installed.
+
+`gpush`::
+    If you are on a branch `foo/bar`, then `gpush` runs `git push origin foo/bar`. Arguments are placed after the `push`, so you can run `gpush -f` to force push.
+
+`gff`::
+    If you're on a branch `foo/bar` that has the commits A B C and if there is a distant branch of the same name that has A B C and new commits like D and E, `gff` will attempt a “fast-forward” to integrate those changes locally in the most harmless way. This is typically useful when you opened a PR and then added commits to it via the GitHub interface: you may want to retrieve those new commits on your computer before performing new changes locally.
+    See the `--ff-only` option's description in `man git merge`.
+
+`grename`::
+    Used to rename the current local branch. The new name can be given as first argument, but you can also run the command on its own: you'll be prompted for a name.
+
+`gorigin`::
+    You probably won't have to use that one directly, but it is used to get the name of your remote Git server. By default, it is `origin`. Some like to rename it to something else for some reasons, so using this is slightly more robust than hard-coding `origin`. Note, however, that you may have issues if you're using multiple remotes. I'll take time to improve that if it eventually appears to be necessary, but in the context of “normal” company work, only one remote location is used.
+
+
+### Aliases
+
+`gfetch` → `git fetch --all -p && echo && git status`::
+    I was tired of typing `git fetch -p` and annoyed by all those times my `git status` was not up to date because of a forgotten fetch. So here's some kind of fetch / status hybrid.
+
+`gnew` → `gfetch && git checkout -b to-be-renamed-"$RANDOM" origin/develop && grename`::
+    Create a new branch, starting at ``develop``'s state and tracking `develop`. You will be prompted to give it a name, but you can leave that for later and keep the random initial name by hitting Ctrl-C.
+
+`glog` → `git log --pretty=oneline --abbrev-commit`::
+    Log with one line per commit.
+
+`conflicts` → `grep -rIn 'ugliest regex ever'`::
+    Look for conflict markers in your files, recursively from the working directory. I was getting tired of people that commit changes with conflict markers sleeping with impunity in their comments.
+
+`gsave` → `git stash save`::
+    Used to store changes before a checkout or a rebase or whatever.
+
+`gpop` → `git stash pop`::
+    Used to retrieve changes after a checkout or a rebase or whatever.
+
+
+# Interdependencies
+
+Some of these tools rely on others. `commit` uses `st` to show you what will be committed, for example. You might run into issues if you try using the scripts without loading the functions and aliases.
