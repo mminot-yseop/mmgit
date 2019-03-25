@@ -1,0 +1,13 @@
+#! /usr/bin/env bash
+
+######################################################################
+# Get the name of a Git remote, favoring those used by default
+# for numerous operations (fetch, push…) in the current project.
+######################################################################
+
+
+# List remotes, sort by number of occurrences, keep the biggest,
+# and hide the occurrence number.
+git remote -v | cut -f1 | uniq -c | sort -rn | head -1 | sed '
+    s/^ *[0-9]* *//
+'
