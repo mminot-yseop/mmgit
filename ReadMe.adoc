@@ -56,7 +56,10 @@ While there is generally no huge difference from the user's point of view betwee
 `revert`::
     Give up uncommitted local changes on some files to put them back into the state they were in at the time of the latest commit.
 
-TIP: These are only short descriptions. Make sure you check the `-h` messages for those scripts.
+`gorigin`::
+    You probably won't have to use that one directly, but it is used to get the name of your remote Git server. By default, it is `origin`. Some like to rename it to something else for some reasons, so using this is slightly more robust than hard-coding `origin`. Note, however, that you may have issues if you're using multiple remotes. I'll take time to improve that if it eventually appears to be necessary, but in the context of “normal” company work, only one remote location is used.
+
+TIP: These are only short descriptions. Make sure you check the `-h` messages for those scripts (except for `gorigin`).
 
 
 ## Aliases and functions
@@ -78,9 +81,6 @@ No help messages for those. These are just simple shorthands for common operatio
 
 `grename`::
     Used to rename the current local branch. The new name can be given as first argument, but you can also run the command on its own: you'll be prompted for a name.
-
-`gorigin`::
-    You probably won't have to use that one directly, but it is used to get the name of your remote Git server. By default, it is `origin`. Some like to rename it to something else for some reasons, so using this is slightly more robust than hard-coding `origin`. Note, however, that you may have issues if you're using multiple remotes. I'll take time to improve that if it eventually appears to be necessary, but in the context of “normal” company work, only one remote location is used.
 
 
 ### Aliases

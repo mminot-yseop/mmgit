@@ -1,12 +1,5 @@
 #! /usr/bin/env bash
 
-# Get the name of the first remote repository
-# after sorting them by number of usages. Typically, "origin".
-function gorigin {
-    git remote -v | cut -f1 | uniq -c | sort -rn | head -1 \
-            | sed 's/^ *[0-9]* *//'
-}
-
 function gdel {
     local line
     local cur_br
