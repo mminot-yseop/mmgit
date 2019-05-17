@@ -278,7 +278,7 @@ function enter_body {
     then
         # Create a disposable file to type stuff.
         tempfile=$(mktemp "${TMPDIR:-/tmp}"/commit-XXXXXXXX)
-        echo 'Waiting the the editor to be closed...'
+        echo 'Waiting for the editor to be closed...'
         # Run the editor.
         "${EDITOR[@]}" "$tempfile"
         # Read what the user typed.
