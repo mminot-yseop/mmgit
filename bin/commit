@@ -27,6 +27,12 @@ unset -v EDITOR
 #declare -r EDITOR=(mousepad)
 declare -r EDITOR=(geany -i)
 
+# If not empty, the scope chosen for the commit will be saved
+# to a file and suggested for the next commit.
+declare -r SAVE_SCOPE=1
+# Where the scope should be written.
+declare -r SAVE_SCOPE_FILE=~/.mmgit-topic
+
 
 # Used for some “select” statements.
 unset -v AUTO_OR_EDIT_MENU
@@ -158,9 +164,16 @@ function enter_scope {
     local sanitized_scope
     local answer
 
+    if [ -r "$SAVE_SCOPE_FILE" ]
+    then
+        # Load saved scope.
+        previous_value=$(sanitize_scope < "$SAVE_SCOPE_FILE")
+    fi
+
     echo
     echo 'It is advised to give a scope, but this can be left empty.'
 
+    # Using no-ops to build a do-while loop.
     while :
         read -rep 'Scope: ' -i "$previous_value" scope
 
@@ -328,6 +341,28 @@ function sanitize_msg {
 }
 
 
+# Write the chosen scope (if any) to a file,
+# if the configuration constants say to do so.
+# $1    The scope. Empty if scopeless commit.
+function save_scope_if_needed {
+    if [ -z "$1" ] || [ -z "$SAVE_SCOPE" ]
+    then
+        # Nothing to do.
+        return 0
+    fi
+    
+    if [ -z "$SAVE_SCOPE_FILE" ]
+    then
+        printf '%s: Please put a path in “SAVE_SCOPE_FILE” in the commit script to save scopes.\n' \
+                "$(basename "$0")" >&2
+        return 1
+    fi
+    
+    mkdir -p "$(dirname "$SAVE_SCOPE_FILE")" &&
+    printf '%s\n' "$1" > "$SAVE_SCOPE_FILE"
+}
+
+
 # ===== “Main” code
 
 project_root=$(git rev-parse --show-toplevel)
@@ -373,6 +408,9 @@ enter_rest_of_the_header "$prompt" "$remaining_space"
 enter_body
 
 echo
-git commit -m "${prompt}${message}"
+
+git commit -m "${prompt}${message}" &&
+save_scope_if_needed "$scope"
+
 echo
 printf '%s: Done.\n' "$(basename "$0")"
