@@ -1,0 +1,15 @@
+#! /usr/bin/env bash
+
+# Rename current branch, either by giving name as arg
+# or by entering it when prompted after launch.
+
+name=$1
+if [ -z "$name" ]
+then
+    read -ep 'Name? ' name
+fi
+
+if git branch -m "${name:?Please give a branch name.}"
+then
+    echo 'Branch successfully renamed.'
+fi

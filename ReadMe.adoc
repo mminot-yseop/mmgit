@@ -21,13 +21,13 @@ export PATH
 You can write the `export` once or a thousand times, before or after the assignments; it does not matter. And `export foo=bar` is just like `foo=bar` followed by `export foo`.
 
 
-## Aliases and functions
+## Aliases
 
-Still in `.bashrc` (or `.zshrc`, etc.), add a line to make sure functions and aliases are loaded:
+Still in `.bashrc` (or `.zshrc`, etc.), add a line to make sure aliases are loaded:
 
 [source,bash]
 ```
-. ~/bin/mmgit/aliases_and_functions.sh
+. ~/bin/mmgit/aliases.sh
 ```
 
 Again, the path might change depending on where you saved `mmgit` on your computer.
@@ -59,16 +59,6 @@ While there is generally no huge difference from the user's point of view betwee
 `gorigin`::
     You probably won't have to use that one directly, but it is used to get the name of your remote Git server. By default, it is `origin`. Some like to rename it to something else for some reasons, so using this is slightly more robust than hard-coding `origin`. Note, however, that you may have issues if you're using multiple remotes. I'll take time to improve that if it eventually appears to be necessary, but in the context of “normal” company work, only one remote location is used.
 
-TIP: These are only short descriptions. Make sure you check the `-h` messages for those scripts (except for `gorigin`).
-
-
-## Aliases and functions
-
-No help messages for those. These are just simple shorthands for common operations.
-
-
-### Functions
-
 `gdel`::
     Open a dialogue box allowing you to pick local branches that should be deleted. Needs `zenity` to be installed.
 
@@ -82,8 +72,12 @@ No help messages for those. These are just simple shorthands for common operatio
 `grename`::
     Used to rename the current local branch. The new name can be given as first argument, but you can also run the command on its own: you'll be prompted for a name.
 
+TIP: These are only short descriptions. Make sure you check the `-h` messages for `commit`, `gcheck` and `revert`.
 
-### Aliases
+
+## Aliases
+
+No help messages for those. These are just simple shorthands for common operations.
 
 `gfetch` → `git fetch --all -p && echo && git status`::
     I was tired of typing `git fetch -p` and annoyed by all those times my `git status` was not up to date because of a forgotten fetch. So here's some kind of fetch / status hybrid.
@@ -102,8 +96,3 @@ No help messages for those. These are just simple shorthands for common operatio
 
 `gpop` → `git stash pop`::
     Used to retrieve changes after a checkout or a rebase or whatever.
-
-
-# Interdependencies
-
-Some of these tools rely on others. `commit` uses `st` to show you what will be committed, for example. You might run into issues if you try using the scripts without loading the functions and aliases.

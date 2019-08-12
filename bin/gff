@@ -1,0 +1,18 @@
+#! /usr/bin/env bash
+
+# Merge with distant branch of the same name
+# only if fast-forward is possible.
+
+git fetch -p || exit
+
+cur_br=$(git rev-parse --abbrev-ref HEAD 2> /dev/null)
+origin=$(gorigin)
+: ${cur_br:?} ${origin:?}
+
+cmd=(git merge --ff-only "$origin"/"$cur_br")
+
+printf 'Running: '
+printf ' %q' "${cmd[@]}"
+echo
+
+"${cmd[@]}"
