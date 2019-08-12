@@ -27,7 +27,7 @@ function print_help {
   and run “${name_for_doc} foo/bar”.
 
   If no BRANCH is given, current existing local branches are displayed
-  and the user is prompt to choose the one he wishes to go to.
+  and the user is prompted to choose the one he wishes to go to.
 
   The “origin” name is actually obtained through the “gorigin” function.
   Adaptations might be needed if you work with several remote repositories.
