@@ -42,8 +42,6 @@ Here's a list of the available tools.
 
 ## Scripts
 
-While there is generally no huge difference from the user's point of view between scripts, aliases and functions, it is worth noting that the scripts provided here can show an help message via the ``-h`` option.
-
 `st`::
     Similar to `git status`. Can be harmlessly run to get an overview of which files have been modified and what will be included in the next commit. This can also be useful to spot conflicting files, etc.
 
