@@ -1,0 +1,43 @@
+#! /usr/bin/env bash
+
+if ! type zenity &> /dev/null
+then
+    printf '%s: Please install “zenity”.\n' "$(basename "$0")" >&2
+    exit 1
+fi
+
+cur_br=$(
+    git rev-parse --abbrev-ref HEAD 2> /dev/null
+)
+
+zencmd=(
+    zenity --list --checklist
+    --title 'Delete local branches'
+    --text "Choose branches to delete.$(
+        if [ "$cur_br" ]
+        then
+            echo "\n(Currently on “${cur_br}”.)"
+        fi
+    )"
+    --width 1100 --height 750
+    --separator $'\n'
+    --column 'Delete?' --column 'Branch name'
+)
+
+while read -r line
+do
+    # Skip if current.
+    test "$line" = "$cur_br" && continue
+    
+    zencmd+=('' "$line")
+    at_least_one=1
+done < <(git branch --list | sed 's/^[* ] //')
+
+if [ "$at_least_one" ]
+then
+    "${zencmd[@]}" 2> /dev/null \
+            | xargs --no-run-if-empty -n 1 \
+            git branch -D
+else
+    echo 'Nothing to delete.' >&2
+fi

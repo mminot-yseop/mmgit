@@ -1,0 +1,15 @@
+#! /usr/bin/env bash
+
+# Args are passed to git push, so you can do “gpush -f”.
+
+cur_br=$(git rev-parse --abbrev-ref HEAD 2> /dev/null)
+origin=$(gorigin)
+: ${cur_br:?} ${origin:?}
+
+cmd=(git push "$@" "$origin" "$cur_br")
+
+printf 'Running: '
+printf ' %q' "${cmd[@]}"
+echo
+
+"${cmd[@]}"
