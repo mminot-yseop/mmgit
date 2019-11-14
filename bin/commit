@@ -42,7 +42,7 @@ declare -r AUTO_OR_EDIT_MENU=(
 )
 
 # The valid commit types.
-unset -v
+unset -v COMMIT_TYPES
 declare -r COMMIT_TYPES=(
     build
     chore
