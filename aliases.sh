@@ -6,5 +6,5 @@ alias glog='git log --pretty=oneline --abbrev-commit'
 
 alias conflicts='grep -rIn '"'"'\(^\|[^<]\)<<<<<<<\($\|[^<]\)\|\(^\|[^=]\)=======\($\|[^=]\)\|\(^\|[^>]\)>>>>>>>\($\|[^>]\)'"'"
 
-alias gsave='git stash save'
+alias gsave='git stash push'
 alias gpop='git stash pop'
