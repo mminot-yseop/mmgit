@@ -4,7 +4,7 @@ alias gnew='gfetch && git checkout -b to-be-renamed-"$RANDOM" origin/develop && 
 
 alias glog='git log --pretty=oneline --abbrev-commit'
 
-alias conflicts='grep -rIn '"'"'\(^\|[^<]\)<<<<<<<\($\|[^<]\)\|\(^\|[^=]\)=======\($\|[^=]\)\|\(^\|[^>]\)>>>>>>>\($\|[^>]\)'"'"
+alias conflicts='grep --exclude-dir=node_modules/ -rIn '"'"'\(^\|[^<]\)<<<<<<<\($\|[^<]\)\|\(^\|[^=]\)=======\($\|[^=]\)\|\(^\|[^>]\)>>>>>>>\($\|[^>]\)'"'"
 
 alias gsave='git stash push'
 alias gpop='git stash pop'
