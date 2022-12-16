@@ -1,12 +1,25 @@
 #! /usr/bin/env bash
 
 # Args are passed to git push, so you can do “gpush -f”.
+# An “-F” will be converted to “--force-with-lease”
+
+unset -v new_args
+new_args=()
+for one_arg
+do
+    if [[ $one_arg = '-F' ]]
+    then
+        new_args+=(--force-with-lease)
+    else
+        new_args+=("$one_arg")
+    fi
+done
 
 cur_br=$(git rev-parse --abbrev-ref HEAD 2> /dev/null)
 origin=$(gorigin)
 : ${cur_br:?} ${origin:?}
 
-cmd=(git push "$@" "$origin" "$cur_br")
+cmd=(git push "${new_args[@]}" "$origin" "$cur_br")
 
 printf 'Running: '
 printf ' %q' "${cmd[@]}"
