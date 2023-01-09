@@ -1,12 +1,12 @@
-# Git wrappers and tools
+= Git wrappers and tools
 :toc:
 
 A few basic Git tools. Some are tuned to help following “conventional commits” conventions, too.
 
 
-# Getting started
+== Getting started
 
-## Scripts
+=== Scripts
 
 Add the `bin/` directory to your `PATH`. Something like `PATH+=':~/bin/mmgit/bin/'` (adapt the path if need be) in your `.bashrc` or `.zshrc` should suffice. Just make sure the variable is “exported”.
 
@@ -21,7 +21,7 @@ export PATH
 You can write the `export` once or a thousand times, before or after the assignments; it does not matter. And `export foo=bar` is just like `foo=bar` followed by `export foo`.
 
 
-## Aliases
+=== Aliases
 
 Still in `.bashrc` (or `.zshrc`, etc.), add a line to make sure aliases are loaded:
 
@@ -35,12 +35,12 @@ Again, the path might change depending on where you saved `mmgit` on your comput
 Note that this line can be added virtually anywhere in the file. Don't give it too much thinking, as long as you keep things organized. Closer to the end is generally better, though, since the weird default things of your OS might be written at the beginning.
 
 
-# Overview
+== Overview
 
 Here's a list of the available tools.
 
 
-## Scripts
+=== Scripts
 
 `st`::
     Similar to `git status`. Can be harmlessly run to get an overview of which files have been modified and what will be included in the next commit. This can also be useful to spot conflicting files, etc.
@@ -73,7 +73,7 @@ Here's a list of the available tools.
 TIP: These are only short descriptions. Make sure you check the `-h` messages for `commit`, `gcheck` and `revert`.
 
 
-## Aliases
+=== Aliases
 
 No help messages for those. These are just simple shorthands for common operations.
 
@@ -94,3 +94,9 @@ No help messages for those. These are just simple shorthands for common operatio
 
 `gpop` → `git stash pop`::
     Used to retrieve changes after a checkout or a rebase or whatever.
+
+
+== Known issues
+
+When moving or renaming files, the “git add” feature embedded into the `commit` script (used by providing an extension as argument) may try to find files that do not exist anymore, because the Git status is, in such cases, somewhat hard to parse properly.
+In such cases, you will have to rely on a “normal”, manual `git add` command, and then use the `commit` script without providing any argument to it.
