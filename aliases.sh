@@ -1,4 +1,4 @@
-alias gfetch='git fetch --all -p && echo && git status'
+alias gfetch='git fetch --all --prune --prune-tags && echo && git status'
 
 alias gnew='gfetch && git checkout -b to-be-renamed-"$RANDOM" origin/develop && grename'
 
